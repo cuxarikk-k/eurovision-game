@@ -1,1 +1,664 @@
-<h1>hello</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eurovision Guessing Game</title>
+<style>
+  /* ---------- Colours and basic page setup ---------- */
+  :root {
+    --bg: #0b0620;
+    --bg-2: #1a0f3d;
+    --pink: #ff2e88;
+    --purple: #8b5cf6;
+    --cyan: #22d3ee;
+    --yellow: #ffd60a;
+    --green: #22c55e;
+    --red: #ef4444;
+    --gold: #ffc93c;
+    --text: #ffffff;
+    --muted: #c4b5fd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,46,136,0.25), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(34,211,238,0.20), transparent 40%),
+      linear-gradient(160deg, var(--bg), var(--bg-2));
+    color: var(--text);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    padding: 1.2rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo {
+    font-size: clamp(1.6rem, 3vw, 2.6rem);
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    background: linear-gradient(90deg, var(--pink), var(--yellow), var(--cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .round-label {
+    font-size: clamp(1.2rem, 2vw, 1.8rem);
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  main {
+    width: 100%;
+    max-width: 1100px;
+    padding: 1rem 2rem 3rem;
+    flex: 1;
+  }
+
+  /* Only one "screen" is visible at a time */
+  .screen { display: none; flex-direction: column; align-items: center; gap: 1.5rem; text-align: center; }
+  .screen.active { display: flex; }
+
+  h1 { font-size: clamp(2.2rem, 5vw, 4rem); margin: 0.5rem 0 0; }
+  h2 { font-size: clamp(1.8rem, 4vw, 3rem); margin: 0; }
+  p.big { font-size: clamp(1.2rem, 2.2vw, 1.8rem); color: var(--muted); margin: 0; max-width: 800px; }
+
+  /* ---------- Buttons ---------- */
+  button {
+    font-family: inherit;
+    font-size: clamp(1.3rem, 2.4vw, 2rem);
+    font-weight: 800;
+    padding: 0.8em 1.6em;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    color: var(--bg);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  button:hover { transform: translateY(-3px) scale(1.03); }
+  button:active { transform: scale(0.97); }
+
+  .btn-pink   { background: var(--pink);   color: #fff; box-shadow: 0 0 25px rgba(255,46,136,0.6); }
+  .btn-cyan   { background: var(--cyan);   box-shadow: 0 0 25px rgba(34,211,238,0.5); }
+  .btn-yellow { background: var(--yellow); box-shadow: 0 0 25px rgba(255,214,10,0.5); }
+  .btn-green  { background: var(--green);  box-shadow: 0 0 25px rgba(34,197,94,0.5); }
+  .btn-ghost  { background: transparent; color: var(--text); border: 3px solid var(--muted); }
+
+  .button-row { display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; }
+
+  /* ---------- Difficulty choice ---------- */
+  .difficulty-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+  }
+  .difficulty-grid button {
+    border-radius: 28px;
+    padding: 1.4em 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+  }
+  .difficulty-grid small { font-size: 0.6em; font-weight: 600; opacity: 0.85; }
+
+  /* ---------- Round screen ---------- */
+  .round-top {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .badge {
+    font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+    font-weight: 800;
+    padding: 0.4em 1em;
+    border-radius: 999px;
+    background: var(--purple);
+  }
+
+  .timer {
+    --p: 100; /* percent of time left, updated by JavaScript */
+    width: clamp(110px, 14vw, 160px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(var(--cyan) calc(var(--p) * 1%), rgba(255,255,255,0.12) 0);
+    display: grid;
+    place-items: center;
+  }
+  .timer span {
+    width: 78%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--bg);
+    display: grid;
+    place-items: center;
+    font-size: clamp(2.6rem, 5vw, 4rem);
+    font-weight: 900;
+  }
+  .timer.danger { background: conic-gradient(var(--red) calc(var(--p) * 1%), rgba(255,255,255,0.12) 0); animation: pulse 0.6s infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.08); } }
+
+  /* The Eurovision-themed card */
+  .card {
+    position: relative;
+    width: min(100%, 820px);
+    aspect-ratio: 16 / 9;
+    border-radius: 32px;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 25%, rgba(255,214,10,0.35), transparent 35%),
+      radial-gradient(circle at 80% 70%, rgba(34,211,238,0.45), transparent 40%),
+      linear-gradient(135deg, var(--pink), var(--purple) 55%, #2563eb);
+    box-shadow: 0 0 60px rgba(139,92,246,0.6);
+    display: grid;
+    place-items: center;
+  }
+
+  /* Decorative heart and stars in the card background */
+  .card .heart {
+    position: absolute;
+    font-size: min(40vw, 380px);
+    line-height: 1;
+    color: rgba(255,255,255,0.12);
+    user-select: none;
+  }
+  .card .stars {
+    position: absolute;
+    inset: 0;
+    font-size: 2rem;
+    color: rgba(255,255,255,0.7);
+    pointer-events: none;
+  }
+  .card .stars span { position: absolute; }
+
+  /* The clue text (hidden behind the sticker until reveal) */
+  .clue {
+    position: relative;
+    z-index: 1;
+    padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    text-shadow: 0 3px 12px rgba(0,0,0,0.45);
+  }
+  .clue .title   { font-size: clamp(2.2rem, 5.5vw, 4.4rem); font-weight: 900; line-height: 1.1; }
+  .clue .country { font-size: clamp(1.6rem, 3.4vw, 2.6rem); font-weight: 700; color: var(--yellow); }
+  .clue .year    { font-size: clamp(1.4rem, 3vw, 2.2rem);  font-weight: 700; color: var(--cyan); }
+
+  /* The sticker that covers the clue */
+  .sticker {
+    position: absolute;
+    z-index: 2;
+    inset: 18% 12%;
+    border-radius: 24px;
+    background: var(--yellow);
+    color: var(--pink);
+    display: grid;
+    place-items: center;
+    font-size: clamp(5rem, 14vw, 10rem);
+    font-weight: 900;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    transform: rotate(-3deg);
+    transition: transform 0.8s cubic-bezier(.6,-0.3,.7,1), opacity 0.8s;
+  }
+  .sticker.peeled {
+    transform: translate(120%, -140%) rotate(35deg);
+    opacity: 0;
+  }
+
+  /* After-reveal panel */
+  .result {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+  }
+  .result.show { display: flex; }
+  .points-message { font-size: clamp(1.8rem, 3.6vw, 2.8rem); font-weight: 900; color: var(--yellow); }
+
+  input[type="text"] {
+    font-family: inherit;
+    font-size: clamp(1.4rem, 2.6vw, 2rem);
+    padding: 0.6em 1em;
+    border-radius: 999px;
+    border: 3px solid var(--cyan);
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    width: min(100%, 520px);
+    text-align: center;
+    outline: none;
+  }
+  input[type="text"]:focus { box-shadow: 0 0 20px rgba(34,211,238,0.6); }
+  input.shake { animation: shake 0.4s; border-color: var(--red); }
+  @keyframes shake {
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+
+  /* ---------- Leaderboard ---------- */
+  .leaderboard {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: min(100%, 760px);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  .leaderboard li {
+    display: grid;
+    grid-template-columns: 4rem 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1.6rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    border-left: 8px solid var(--pink);
+    font-size: clamp(1.4rem, 2.8vw, 2.2rem);
+    font-weight: 700;
+    text-align: left;
+  }
+  .leaderboard li:nth-child(3n+2) { border-left-color: var(--cyan); }
+  .leaderboard li:nth-child(3n)   { border-left-color: var(--yellow); }
+  .leaderboard .rank   { color: var(--muted); }
+  .leaderboard .points { font-weight: 900; }
+
+  .leaderboard li.winner {
+    background: linear-gradient(90deg, var(--gold), #ffe58a);
+    color: var(--bg);
+    border-left-color: #fff;
+    box-shadow: 0 0 40px rgba(255,201,60,0.7);
+    transform: scale(1.04);
+  }
+  .leaderboard li.winner .rank { color: var(--bg); }
+
+  .empty-board { font-size: clamp(1.3rem, 2.4vw, 1.8rem); color: var(--muted); }
+
+  .winner-banner {
+    font-size: clamp(2.4rem, 6vw, 4.6rem);
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(255,201,60,0.8);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">♥ Eurovision Guess</div>
+  <div class="round-label" id="roundLabel"></div>
+</header>
+
+<main>
+
+  <!-- SCREEN 1: host picks the difficulty for the next round -->
+  <section class="screen active" id="screenDifficulty">
+    <h1>Choose the difficulty</h1>
+    <p class="big">This decides how much of the song is shown when the sticker comes off.</p>
+    <div class="difficulty-grid">
+      <button class="btn-cyan"   data-difficulty="easy">Easy<small>Song title</small></button>
+      <button class="btn-yellow" data-difficulty="medium">Medium<small>Title + country</small></button>
+      <button class="btn-pink"   data-difficulty="hard">Hard<small>Title + country + year</small></button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: the round itself -->
+  <section class="screen" id="screenRound">
+    <div class="round-top">
+      <div class="badge" id="difficultyBadge">Easy</div>
+      <div class="timer" id="timer"><span id="timerNumber">30</span></div>
+    </div>
+
+    <div class="card">
+      <div class="heart">♥</div>
+      <div class="stars">
+        <span style="top:8%;left:6%">★</span>
+        <span style="top:14%;right:8%">✦</span>
+        <span style="bottom:10%;left:12%">✦</span>
+        <span style="bottom:8%;right:6%">★</span>
+        <span style="top:45%;left:3%">✧</span>
+        <span style="top:50%;right:3%">✧</span>
+      </div>
+      <div class="clue" id="clue"></div>
+      <div class="sticker" id="sticker">?</div>
+    </div>
+
+    <button class="btn-pink" id="revealButton">Reveal!</button>
+
+    <div class="result" id="result">
+      <div class="points-message" id="pointsMessage"></div>
+      <div id="awardArea" class="result show">
+        <input type="text" id="playerName" placeholder="Who guessed it?" list="knownPlayers" autocomplete="off">
+        <datalist id="knownPlayers"></datalist>
+        <div class="button-row">
+          <button class="btn-green" id="awardButton">Award points</button>
+          <button class="btn-ghost" id="skipButton">Nobody got it</button>
+        </div>
+      </div>
+      <button class="btn-cyan" id="continueButton">See leaderboard</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 3: leaderboard between rounds -->
+  <section class="screen" id="screenBoard">
+    <h1>Leaderboard</h1>
+    <ul class="leaderboard" id="boardList"></ul>
+    <div class="button-row">
+      <button class="btn-pink" id="nextRoundButton">Next round</button>
+      <button class="btn-ghost" id="finishButton">Finish game</button>
+    </div>
+  </section>
+
+  <!-- SCREEN 4: final results -->
+  <section class="screen" id="screenFinal">
+    <h1>Final results</h1>
+    <div class="winner-banner" id="winnerBanner"></div>
+    <ul class="leaderboard" id="finalList"></ul>
+    <button class="btn-yellow" id="newGameButton">New game</button>
+  </section>
+
+</main>
+
+<script>
+  // ---------- The song pool ----------
+  const SONGS = [
+    // 2021
+    { title: "Zitti e buoni",              country: "Italy",          year: 2021 },
+    { title: "Voilà",                      country: "France",         year: 2021 },
+    { title: "Tout l'univers",             country: "Switzerland",    year: 2021 },
+    { title: "10 Years",                   country: "Iceland",        year: 2021 },
+    { title: "Shum",                       country: "Ukraine",        year: 2021 },
+    { title: "Dark Side",                  country: "Finland",        year: 2021 },
+    { title: "Je me casse",                country: "Malta",          year: 2021 },
+    { title: "Discoteque",                 country: "Lithuania",      year: 2021 },
+    { title: "El Diablo",                  country: "Cyprus",         year: 2021 },
+    { title: "Fallen Angel",               country: "Norway",         year: 2021 },
+    // 2022
+    { title: "Stefania",                   country: "Ukraine",        year: 2022 },
+    { title: "Space Man",                  country: "United Kingdom", year: 2022 },
+    { title: "SloMo",                      country: "Spain",          year: 2022 },
+    { title: "Hold Me Closer",             country: "Sweden",         year: 2022 },
+    { title: "In corpore sano",            country: "Serbia",         year: 2022 },
+    { title: "Brividi",                    country: "Italy",          year: 2022 },
+    { title: "Trenulețul",                 country: "Moldova",        year: 2022 },
+    { title: "Give That Wolf a Banana",    country: "Norway",         year: 2022 },
+    { title: "De diepte",                  country: "Netherlands",    year: 2022 },
+    { title: "River",                      country: "Poland",         year: 2022 },
+    // 2023
+    { title: "Tattoo",                     country: "Sweden",         year: 2023 },
+    { title: "Cha Cha Cha",                country: "Finland",        year: 2023 },
+    { title: "Unicorn",                    country: "Israel",         year: 2023 },
+    { title: "Due vite",                   country: "Italy",          year: 2023 },
+    { title: "Queen of Kings",             country: "Norway",         year: 2023 },
+    { title: "Heart of Steel",             country: "Ukraine",        year: 2023 },
+    { title: "Mama ŠČ!",                   country: "Croatia",        year: 2023 },
+    { title: "Eaea",                       country: "Spain",          year: 2023 },
+    { title: "My Sister's Crown",          country: "Czech Republic", year: 2023 },
+    { title: "Who the Hell Is Edgar?",     country: "Austria",        year: 2023 },
+    // 2024
+    { title: "The Code",                   country: "Switzerland",    year: 2024 },
+    { title: "Rim Tim Tagi Dim",           country: "Croatia",        year: 2024 },
+    { title: "Teresa & Maria",             country: "Ukraine",        year: 2024 },
+    { title: "Mon amour",                  country: "France",         year: 2024 },
+    { title: "Hurricane",                  country: "Israel",         year: 2024 },
+    { title: "Doomsday Blue",              country: "Ireland",        year: 2024 },
+    { title: "La noia",                    country: "Italy",          year: 2024 },
+    { title: "Jako",                       country: "Armenia",        year: 2024 },
+    { title: "Unforgettable",              country: "Sweden",         year: 2024 },
+    { title: "Zari",                       country: "Greece",         year: 2024 }
+  ];
+
+  const ROUND_SECONDS = 30;
+
+  const DIFFICULTY_LABELS = { easy: "Easy", medium: "Medium", hard: "Hard" };
+
+  // ---------- Everything the game needs to remember ----------
+  const state = {
+    scores: {},        // e.g. { "anna": { name: "Anna", points: 45 } }
+    round: 0,
+    deck: [],          // songs not yet played, in random order
+    song: null,        // the song in the current round
+    difficulty: "easy",
+    timerId: null,
+    startTime: 0,
+    secondsLeft: ROUND_SECONDS,
+    roundOver: false,
+    pointsOnOffer: 0
+  };
+
+  // ---------- Small helpers ----------
+  const $ = (id) => document.getElementById(id);
+
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+    $(id).classList.add("active");
+  }
+
+  function shuffle(list) {
+    const copy = list.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function nextSong() {
+    if (state.deck.length === 0) state.deck = shuffle(SONGS); // refill once every song has been used
+    return state.deck.pop();
+  }
+
+  function updateRoundLabel() {
+    $("roundLabel").textContent = state.round > 0 ? "Round " + state.round : "";
+  }
+
+  // ---------- Starting a round ----------
+  function startRound(difficulty) {
+    state.difficulty = difficulty;
+    state.song = nextSong();
+    state.round += 1;
+    state.roundOver = false;
+    state.secondsLeft = ROUND_SECONDS;
+    updateRoundLabel();
+
+    $("difficultyBadge").textContent = DIFFICULTY_LABELS[difficulty];
+    $("clue").innerHTML = "";                 // nothing behind the sticker yet
+    $("sticker").classList.remove("peeled");  // put the sticker back on
+    $("revealButton").style.display = "";
+    $("result").classList.remove("show");
+    $("playerName").value = "";
+
+    showScreen("screenRound");
+    drawTimer(ROUND_SECONDS);
+
+    state.startTime = performance.now();
+    state.timerId = setInterval(tick, 100);
+  }
+
+  // ---------- The countdown ----------
+  function tick() {
+    const elapsed = (performance.now() - state.startTime) / 1000;
+    const remaining = Math.max(0, ROUND_SECONDS - elapsed);
+    state.secondsLeft = Math.ceil(remaining);
+    drawTimer(remaining);
+    if (remaining <= 0) endRound(true);
+  }
+
+  function drawTimer(remaining) {
+    const timer = $("timer");
+    $("timerNumber").textContent = Math.ceil(remaining);
+    timer.style.setProperty("--p", (remaining / ROUND_SECONDS) * 100);
+    timer.classList.toggle("danger", remaining <= 5 && remaining > 0);
+  }
+
+  // ---------- Ending a round (Reveal pressed, or time ran out) ----------
+  function endRound(timedOut) {
+    if (state.roundOver) return;
+    state.roundOver = true;
+    clearInterval(state.timerId);
+
+    // Points = the number showing on the clock when Reveal was pressed
+    state.pointsOnOffer = timedOut ? 0 : state.secondsLeft;
+    if (timedOut) drawTimer(0);
+
+    showClue();
+    $("sticker").classList.add("peeled");
+    $("revealButton").style.display = "none";
+
+    if (state.pointsOnOffer > 0) {
+      $("pointsMessage").textContent = state.pointsOnOffer + " points up for grabs!";
+      $("awardArea").style.display = "";
+      $("continueButton").style.display = "none";
+      refreshPlayerSuggestions();
+      setTimeout(() => $("playerName").focus(), 300);
+    } else {
+      $("pointsMessage").textContent = "Time's up! No points this round.";
+      $("awardArea").style.display = "none";
+      $("continueButton").style.display = "";
+    }
+    $("result").classList.add("show");
+  }
+
+  function showClue() {
+    const clue = $("clue");
+    clue.innerHTML = "";
+    addClueLine(clue, "title", state.song.title);
+    if (state.difficulty === "medium" || state.difficulty === "hard") {
+      addClueLine(clue, "country", state.song.country);
+    }
+    if (state.difficulty === "hard") {
+      addClueLine(clue, "year", state.song.year);
+    }
+  }
+
+  function addClueLine(parent, className, text) {
+    const line = document.createElement("div");
+    line.className = className;
+    line.textContent = text;
+    parent.appendChild(line);
+  }
+
+  // ---------- Giving points ----------
+  function awardPoints() {
+    const input = $("playerName");
+    const name = input.value.trim();
+    if (!name) {
+      input.classList.remove("shake");
+      void input.offsetWidth;          // restarts the shake animation
+      input.classList.add("shake");
+      input.focus();
+      return;
+    }
+    const key = name.toLowerCase();    // "anna" and "Anna" count as the same player
+    if (!state.scores[key]) state.scores[key] = { name: name, points: 0 };
+    state.scores[key].points += state.pointsOnOffer;
+    showLeaderboard();
+  }
+
+  function refreshPlayerSuggestions() {
+    const list = $("knownPlayers");
+    list.innerHTML = "";
+    Object.values(state.scores).forEach((p) => {
+      const option = document.createElement("option");
+      option.value = p.name;
+      list.appendChild(option);
+    });
+  }
+
+  // ---------- Leaderboards ----------
+  function sortedPlayers() {
+    return Object.values(state.scores).sort(
+      (a, b) => b.points - a.points || a.name.localeCompare(b.name)
+    );
+  }
+
+  function fillLeaderboard(listElement, highlightWinners) {
+    listElement.innerHTML = "";
+    const players = sortedPlayers();
+
+    if (players.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "empty-board";
+      empty.style.display = "block";
+      empty.style.textAlign = "center";
+      empty.textContent = "No points scored yet.";
+      listElement.appendChild(empty);
+      return [];
+    }
+
+    const topScore = players[0].points;
+    players.forEach((p, index) => {
+      const row = document.createElement("li");
+      if (highlightWinners && topScore > 0 && p.points === topScore) row.classList.add("winner");
+
+      const rank = document.createElement("span");
+      rank.className = "rank";
+      rank.textContent = "#" + (index + 1);
+
+      const name = document.createElement("span");
+      name.textContent = p.name;
+
+      const pts = document.createElement("span");
+      pts.className = "points";
+      pts.textContent = p.points + " pts";
+
+      row.append(rank, name, pts);
+      listElement.appendChild(row);
+    });
+
+    return players.filter((p) => topScore > 0 && p.points === topScore);
+  }
+
+  function showLeaderboard() {
+    fillLeaderboard($("boardList"), false);
+    showScreen("screenBoard");
+  }
+
+  function showFinal() {
+    const winners = fillLeaderboard($("finalList"), true);
+    let banner = "No winner this time!";
+    if (winners.length === 1) banner = "🏆 " + winners[0].name + " wins! 🏆";
+    if (winners.length > 1) banner = "🏆 It's a tie: " + winners.map((w) => w.name).join(" & ") + "! 🏆";
+    $("winnerBanner").textContent = banner;
+    showScreen("screenFinal");
+  }
+
+  function newGame() {
+    state.scores = {};
+    state.round = 0;
+    state.deck = [];
+    updateRoundLabel();
+    showScreen("screenDifficulty");
+  }
+
+  // ---------- Connecting buttons to actions ----------
+  document.querySelectorAll("[data-difficulty]").forEach((btn) => {
+    btn.addEventListener("click", () => startRound(btn.dataset.difficulty));
+  });
+  $("revealButton").addEventListener("click", () => endRound(false));
+  $("awardButton").addEventListener("click", awardPoints);
+  $("playerName").addEventListener("keydown", (e) => { if (e.key === "Enter") awardPoints(); });
+  $("skipButton").addEventListener("click", showLeaderboard);
+  $("continueButton").addEventListener("click", showLeaderboard);
+  $("nextRoundButton").addEventListener("click", () => showScreen("screenDifficulty"));
+  $("finishButton").addEventListener("click", showFinal);
+  $("newGameButton").addEventListener("click", newGame);
+</script>
+
+</body>
+</html>
