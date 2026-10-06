@@ -160,6 +160,17 @@
     align-items: center;
     gap: 0.8rem;
   }
+  /* The emoji picture puzzle: the main clue */
+  .hint-emoji {
+    font-size: clamp(4rem, 11vw, 8rem);
+    line-height: 1.1;
+    letter-spacing: 0.1em;
+    padding: 0.15em 0.6em;
+    border-radius: 32px;
+    background: rgba(255,255,255,0.08);
+    border: 4px solid var(--cyan);
+    box-shadow: 0 0 40px rgba(34,211,238,0.35);
+  }
   .hint-chips { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
   .hint-chip {
     font-size: clamp(1.4rem, 3vw, 2.4rem);
@@ -353,11 +364,11 @@
   <!-- SCREEN 1: host picks the difficulty for the next round -->
   <section class="screen active" id="screenDifficulty">
     <h1>Choose the difficulty</h1>
-    <p class="big">Players see the hints straight away and shout out the song title hidden under the stickers.</p>
+    <p class="big">Players see an emoji picture puzzle and shout out the song title hidden under the stickers.</p>
     <div class="difficulty-grid">
-      <button class="btn-cyan"   data-difficulty="easy">Easy<small>Artist, country, year + letter blanks</small></button>
-      <button class="btn-yellow" data-difficulty="medium">Medium<small>Artist, country, year</small></button>
-      <button class="btn-pink"   data-difficulty="hard">Hard<small>Country + year only</small></button>
+      <button class="btn-cyan"   data-difficulty="easy">Easy<small>Emojis + year + letter blanks</small></button>
+      <button class="btn-yellow" data-difficulty="medium">Medium<small>Emojis + year</small></button>
+      <button class="btn-pink"   data-difficulty="hard">Hard<small>Emojis only</small></button>
     </div>
   </section>
 
@@ -370,6 +381,7 @@
 
     <!-- Hints players can see while guessing -->
     <div class="hints">
+      <div class="hint-emoji" id="hintEmoji"></div>
       <div class="hint-chips" id="hintChips"></div>
       <div class="hint-blanks" id="hintBlanks"></div>
     </div>
@@ -446,144 +458,144 @@
   // ---------- The song pool (2000–2026; there was no contest in 2020) ----------
   const SONGS = [
     // 2000
-    { title: "Fly on the Wings of Love",     artist: "Olsen Brothers",                  country: "Denmark",                year: 2000 },
-    { title: "My Star",                      artist: "Brainstorm",                      country: "Latvia",                 year: 2000 },
+    { title: "Fly on the Wings of Love",     artist: "Olsen Brothers",                  country: "Denmark",                year: 2000, emoji: "🕊️🪶❤️" },
+    { title: "My Star",                      artist: "Brainstorm",                      country: "Latvia",                 year: 2000, emoji: "🙋⭐" },
     // 2001
-    { title: "Everybody",                    artist: "Tanel Padar, Dave Benton & 2XL",  country: "Estonia",                year: 2001 },
-    { title: "(I Would) Die for You",        artist: "Antique",                         country: "Greece",                 year: 2001 },
-    { title: "Never Ever Let You Go",        artist: "Rollo & King",                    country: "Denmark",                year: 2001 },
+    { title: "Everybody",                    artist: "Tanel Padar, Dave Benton & 2XL",  country: "Estonia",                year: 2001, emoji: "👨‍👩‍👧‍👦🌍" },
+    { title: "(I Would) Die for You",        artist: "Antique",                         country: "Greece",                 year: 2001, emoji: "💀➡️👉" },
+    { title: "Never Ever Let You Go",        artist: "Rollo & King",                    country: "Denmark",                year: 2001, emoji: "🚫🚫👋👉" },
     // 2002
-    { title: "I Wanna",                      artist: "Marie N",                         country: "Latvia",                 year: 2002 },
-    { title: "7th Wonder",                   artist: "Ira Losco",                       country: "Malta",                  year: 2002 },
+    { title: "I Wanna",                      artist: "Marie N",                         country: "Latvia",                 year: 2002, emoji: "🙋💭🎁" },
+    { title: "7th Wonder",                   artist: "Ira Losco",                       country: "Malta",                  year: 2002, emoji: "7️⃣🏛️✨" },
     // 2003
-    { title: "Everyway That I Can",          artist: "Sertab Erener",                   country: "Turkey",                 year: 2003 },
-    { title: "Sanomi",                       artist: "Urban Trad",                      country: "Belgium",                year: 2003 },
+    { title: "Everyway That I Can",          artist: "Sertab Erener",                   country: "Turkey",                 year: 2003, emoji: "🛣️🛣️💪" },
+    { title: "Sanomi",                       artist: "Urban Trad",                      country: "Belgium",                year: 2003, emoji: "🎻🌀🗣️" },
     // 2004
-    { title: "Wild Dances",                  artist: "Ruslana",                         country: "Ukraine",                year: 2004 },
-    { title: "Lane moje",                    artist: "Željko Joksimović",               country: "Serbia and Montenegro",  year: 2004 },
-    { title: "Shake It",                     artist: "Sakis Rouvas",                    country: "Greece",                 year: 2004 },
+    { title: "Wild Dances",                  artist: "Ruslana",                         country: "Ukraine",                year: 2004, emoji: "🐺💃🔥" },
+    { title: "Lane moje",                    artist: "Željko Joksimović",               country: "Serbia and Montenegro",  year: 2004, emoji: "🦌❤️" },
+    { title: "Shake It",                     artist: "Sakis Rouvas",                    country: "Greece",                 year: 2004, emoji: "📳💃" },
     // 2005
-    { title: "My Number One",                artist: "Helena Paparizou",                country: "Greece",                 year: 2005 },
-    { title: "Angel",                        artist: "Chiara",                          country: "Malta",                  year: 2005 },
-    { title: "Boonika bate doba",            artist: "Zdob și Zdub",                    country: "Moldova",                year: 2005 },
+    { title: "My Number One",                artist: "Helena Paparizou",                country: "Greece",                 year: 2005, emoji: "🙋1️⃣🏆" },
+    { title: "Angel",                        artist: "Chiara",                          country: "Malta",                  year: 2005, emoji: "👼" },
+    { title: "Boonika bate doba",            artist: "Zdob și Zdub",                    country: "Moldova",                year: 2005, emoji: "👵🥁" },
     // 2006
-    { title: "Hard Rock Hallelujah",         artist: "Lordi",                           country: "Finland",                year: 2006 },
-    { title: "Lejla",                        artist: "Hari Mata Hari",                  country: "Bosnia and Herzegovina", year: 2006 },
+    { title: "Hard Rock Hallelujah",         artist: "Lordi",                           country: "Finland",                year: 2006, emoji: "🪨🤘🙏" },
+    { title: "Lejla",                        artist: "Hari Mata Hari",                  country: "Bosnia and Herzegovina", year: 2006, emoji: "👩💌" },
     // 2007
-    { title: "Molitva",                      artist: "Marija Šerifović",                country: "Serbia",                 year: 2007 },
-    { title: "Dancing Lasha Tumbai",         artist: "Verka Serduchka",                 country: "Ukraine",                year: 2007 },
+    { title: "Molitva",                      artist: "Marija Šerifović",                country: "Serbia",                 year: 2007, emoji: "🙏🕯️" },
+    { title: "Dancing Lasha Tumbai",         artist: "Verka Serduchka",                 country: "Ukraine",                year: 2007, emoji: "💃⭐🪞" },
     // 2008
-    { title: "Shady Lady",                   artist: "Ani Lorak",                       country: "Ukraine",                year: 2008 },
-    { title: "Secret Combination",           artist: "Kalomira",                        country: "Greece",                 year: 2008 },
+    { title: "Shady Lady",                   artist: "Ani Lorak",                       country: "Ukraine",                year: 2008, emoji: "🕶️👩" },
+    { title: "Secret Combination",           artist: "Kalomira",                        country: "Greece",                 year: 2008, emoji: "🤫🔐🔢" },
     // 2009
-    { title: "Fairytale",                    artist: "Alexander Rybak",                 country: "Norway",                 year: 2009 },
-    { title: "Is It True?",                  artist: "Yohanna",                         country: "Iceland",                year: 2009 },
-    { title: "Always",                       artist: "AySel & Arash",                   country: "Azerbaijan",             year: 2009 },
+    { title: "Fairytale",                    artist: "Alexander Rybak",                 country: "Norway",                 year: 2009, emoji: "🧚📖🎻" },
+    { title: "Is It True?",                  artist: "Yohanna",                         country: "Iceland",                year: 2009, emoji: "❓✅" },
+    { title: "Always",                       artist: "AySel & Arash",                   country: "Azerbaijan",             year: 2009, emoji: "♾️⏰" },
     // 2010
-    { title: "Satellite",                    artist: "Lena",                            country: "Germany",                year: 2010 },
-    { title: "We Could Be the Same",         artist: "maNga",                           country: "Turkey",                 year: 2010 },
-    { title: "Playing with Fire",            artist: "Paula Seling & Ovi",              country: "Romania",                year: 2010 },
+    { title: "Satellite",                    artist: "Lena",                            country: "Germany",                year: 2010, emoji: "🛰️" },
+    { title: "We Could Be the Same",         artist: "maNga",                           country: "Turkey",                 year: 2010, emoji: "👥🟰" },
+    { title: "Playing with Fire",            artist: "Paula Seling & Ovi",              country: "Romania",                year: 2010, emoji: "🤹🔥" },
     // 2011
-    { title: "Running Scared",               artist: "Ell & Nikki",                     country: "Azerbaijan",             year: 2011 },
-    { title: "Madness of Love",              artist: "Raphael Gualazzi",                country: "Italy",                  year: 2011 },
-    { title: "Popular",                      artist: "Eric Saade",                      country: "Sweden",                 year: 2011 },
-    { title: "Lipstick",                     artist: "Jedward",                         country: "Ireland",                year: 2011 },
+    { title: "Running Scared",               artist: "Ell & Nikki",                     country: "Azerbaijan",             year: 2011, emoji: "🏃😱" },
+    { title: "Madness of Love",              artist: "Raphael Gualazzi",                country: "Italy",                  year: 2011, emoji: "🤪❤️" },
+    { title: "Popular",                      artist: "Eric Saade",                      country: "Sweden",                 year: 2011, emoji: "💯👍👥" },
+    { title: "Lipstick",                     artist: "Jedward",                         country: "Ireland",                year: 2011, emoji: "💄" },
     // 2012
-    { title: "Euphoria",                     artist: "Loreen",                          country: "Sweden",                 year: 2012 },
-    { title: "Nije ljubav stvar",            artist: "Željko Joksimović",               country: "Serbia",                 year: 2012 },
+    { title: "Euphoria",                     artist: "Loreen",                          country: "Sweden",                 year: 2012, emoji: "🤩🌌🙌" },
+    { title: "Nije ljubav stvar",            artist: "Željko Joksimović",               country: "Serbia",                 year: 2012, emoji: "❤️🚫📦" },
     // 2013
-    { title: "Only Teardrops",               artist: "Emmelie de Forest",               country: "Denmark",                year: 2013 },
-    { title: "Hold Me",                      artist: "Farid Mammadov",                  country: "Azerbaijan",             year: 2013 },
-    { title: "Gravity",                      artist: "Zlata Ognevich",                  country: "Ukraine",                year: 2013 },
-    { title: "It's My Life",                 artist: "Cezar",                           country: "Romania",                year: 2013 },
+    { title: "Only Teardrops",               artist: "Emmelie de Forest",               country: "Denmark",                year: 2013, emoji: "☝️💧😢" },
+    { title: "Hold Me",                      artist: "Farid Mammadov",                  country: "Azerbaijan",             year: 2013, emoji: "🤗" },
+    { title: "Gravity",                      artist: "Zlata Ognevich",                  country: "Ukraine",                year: 2013, emoji: "🍎⬇️🌍" },
+    { title: "It's My Life",                 artist: "Cezar",                           country: "Romania",                year: 2013, emoji: "🙋🌱" },
     // 2014
-    { title: "Rise Like a Phoenix",          artist: "Conchita Wurst",                  country: "Austria",                year: 2014 },
-    { title: "Calm After the Storm",         artist: "The Common Linnets",              country: "Netherlands",            year: 2014 },
-    { title: "Undo",                         artist: "Sanna Nielsen",                   country: "Sweden",                 year: 2014 },
+    { title: "Rise Like a Phoenix",          artist: "Conchita Wurst",                  country: "Austria",                year: 2014, emoji: "⬆️🔥🐦" },
+    { title: "Calm After the Storm",         artist: "The Common Linnets",              country: "Netherlands",            year: 2014, emoji: "😌⛈️" },
+    { title: "Undo",                         artist: "Sanna Nielsen",                   country: "Sweden",                 year: 2014, emoji: "↩️" },
     // 2015
-    { title: "Heroes",                       artist: "Måns Zelmerlöw",                  country: "Sweden",                 year: 2015 },
-    { title: "Grande amore",                 artist: "Il Volo",                         country: "Italy",                  year: 2015 },
-    { title: "Rhythm Inside",                artist: "Loïc Nottet",                     country: "Belgium",                year: 2015 },
+    { title: "Heroes",                       artist: "Måns Zelmerlöw",                  country: "Sweden",                 year: 2015, emoji: "🦸🦸‍♀️" },
+    { title: "Grande amore",                 artist: "Il Volo",                         country: "Italy",                  year: 2015, emoji: "🐘❤️" },
+    { title: "Rhythm Inside",                artist: "Loïc Nottet",                     country: "Belgium",                year: 2015, emoji: "🥁❤️" },
     // 2016
-    { title: "1944",                         artist: "Jamala",                          country: "Ukraine",                year: 2016 },
-    { title: "Sound of Silence",             artist: "Dami Im",                         country: "Australia",              year: 2016 },
-    { title: "If Love Was a Crime",          artist: "Poli Genova",                     country: "Bulgaria",               year: 2016 },
+    { title: "1944",                         artist: "Jamala",                          country: "Ukraine",                year: 2016, emoji: "🕯️🚂⏳" },
+    { title: "Sound of Silence",             artist: "Dami Im",                         country: "Australia",              year: 2016, emoji: "🔊🤫" },
+    { title: "If Love Was a Crime",          artist: "Poli Genova",                     country: "Bulgaria",               year: 2016, emoji: "❤️🚔⚖️" },
     // 2017
-    { title: "Amar pelos dois",              artist: "Salvador Sobral",                 country: "Portugal",               year: 2017 },
-    { title: "Beautiful Mess",               artist: "Kristian Kostov",                 country: "Bulgaria",               year: 2017 },
-    { title: "Hey Mamma",                    artist: "SunStroke Project",               country: "Moldova",                year: 2017 },
-    { title: "Occidentali's Karma",          artist: "Francesco Gabbani",               country: "Italy",                  year: 2017 },
+    { title: "Amar pelos dois",              artist: "Salvador Sobral",                 country: "Portugal",               year: 2017, emoji: "❤️✌️" },
+    { title: "Beautiful Mess",               artist: "Kristian Kostov",                 country: "Bulgaria",               year: 2017, emoji: "😍🌪️" },
+    { title: "Hey Mamma",                    artist: "SunStroke Project",               country: "Moldova",                year: 2017, emoji: "👋👩‍👦" },
+    { title: "Occidentali's Karma",          artist: "Francesco Gabbani",               country: "Italy",                  year: 2017, emoji: "🧘🦍" },
     // 2018
-    { title: "Toy",                          artist: "Netta",                           country: "Israel",                 year: 2018 },
-    { title: "Fuego",                        artist: "Eleni Foureira",                  country: "Cyprus",                 year: 2018 },
-    { title: "Nobody but You",               artist: "Cesár Sampson",                   country: "Austria",                year: 2018 },
-    { title: "You Let Me Walk Alone",        artist: "Michael Schulte",                 country: "Germany",                year: 2018 },
+    { title: "Toy",                          artist: "Netta",                           country: "Israel",                 year: 2018, emoji: "🐔🧸" },
+    { title: "Fuego",                        artist: "Eleni Foureira",                  country: "Cyprus",                 year: 2018, emoji: "🔥" },
+    { title: "Nobody but You",               artist: "Cesár Sampson",                   country: "Austria",                year: 2018, emoji: "🚫👥👉" },
+    { title: "You Let Me Walk Alone",        artist: "Michael Schulte",                 country: "Germany",                year: 2018, emoji: "👉🚶😔" },
     // 2019
-    { title: "Arcade",                       artist: "Duncan Laurence",                 country: "Netherlands",            year: 2019 },
-    { title: "Soldi",                        artist: "Mahmood",                         country: "Italy",                  year: 2019 },
-    { title: "She Got Me",                   artist: "Luca Hänni",                      country: "Switzerland",            year: 2019 },
+    { title: "Arcade",                       artist: "Duncan Laurence",                 country: "Netherlands",            year: 2019, emoji: "🕹️👾" },
+    { title: "Soldi",                        artist: "Mahmood",                         country: "Italy",                  year: 2019, emoji: "💰💸" },
+    { title: "She Got Me",                   artist: "Luca Hänni",                      country: "Switzerland",            year: 2019, emoji: "👩🪝🙋‍♂️" },
     // 2021
-    { title: "Zitti e buoni",                artist: "Måneskin",                        country: "Italy",                  year: 2021 },
-    { title: "Voilà",                        artist: "Barbara Pravi",                   country: "France",                 year: 2021 },
-    { title: "Tout l'univers",               artist: "Gjon's Tears",                    country: "Switzerland",            year: 2021 },
-    { title: "10 Years",                     artist: "Daði og Gagnamagnið",             country: "Iceland",                year: 2021 },
-    { title: "Shum",                         artist: "Go_A",                            country: "Ukraine",                year: 2021 },
-    { title: "Dark Side",                    artist: "Blind Channel",                   country: "Finland",                year: 2021 },
-    { title: "Je me casse",                  artist: "Destiny",                         country: "Malta",                  year: 2021 },
-    { title: "Discoteque",                   artist: "The Roop",                        country: "Lithuania",              year: 2021 },
-    { title: "El Diablo",                    artist: "Elena Tsagrinou",                 country: "Cyprus",                 year: 2021 },
-    { title: "Fallen Angel",                 artist: "Tix",                             country: "Norway",                 year: 2021 },
+    { title: "Zitti e buoni",                artist: "Måneskin",                        country: "Italy",                  year: 2021, emoji: "🤫😇" },
+    { title: "Voilà",                        artist: "Barbara Pravi",                   country: "France",                 year: 2021, emoji: "🎩✨👀" },
+    { title: "Tout l'univers",               artist: "Gjon's Tears",                    country: "Switzerland",            year: 2021, emoji: "🌌🪐🌍" },
+    { title: "10 Years",                     artist: "Daði og Gagnamagnið",             country: "Iceland",                year: 2021, emoji: "🔟📅" },
+    { title: "Shum",                         artist: "Go_A",                            country: "Ukraine",                year: 2021, emoji: "🌱🥁" },
+    { title: "Dark Side",                    artist: "Blind Channel",                   country: "Finland",                year: 2021, emoji: "🌑😈" },
+    { title: "Je me casse",                  artist: "Destiny",                         country: "Malta",                  year: 2021, emoji: "🚪🏃‍♀️💨" },
+    { title: "Discoteque",                   artist: "The Roop",                        country: "Lithuania",              year: 2021, emoji: "🕺✨🎶" },
+    { title: "El Diablo",                    artist: "Elena Tsagrinou",                 country: "Cyprus",                 year: 2021, emoji: "😈🔥" },
+    { title: "Fallen Angel",                 artist: "Tix",                             country: "Norway",                 year: 2021, emoji: "⬇️👼" },
     // 2022
-    { title: "Stefania",                     artist: "Kalush Orchestra",                country: "Ukraine",                year: 2022 },
-    { title: "Space Man",                    artist: "Sam Ryder",                       country: "United Kingdom",         year: 2022 },
-    { title: "SloMo",                        artist: "Chanel",                          country: "Spain",                  year: 2022 },
-    { title: "Hold Me Closer",               artist: "Cornelia Jakobs",                 country: "Sweden",                 year: 2022 },
-    { title: "In corpore sano",              artist: "Konstrakta",                      country: "Serbia",                 year: 2022 },
-    { title: "Brividi",                      artist: "Mahmood & Blanco",                country: "Italy",                  year: 2022 },
-    { title: "Trenulețul",                   artist: "Zdob și Zdub & Frații Advahov",   country: "Moldova",                year: 2022 },
-    { title: "Give That Wolf a Banana",      artist: "Subwoolfer",                      country: "Norway",                 year: 2022 },
-    { title: "De diepte",                    artist: "S10",                             country: "Netherlands",            year: 2022 },
-    { title: "River",                        artist: "Ochman",                          country: "Poland",                 year: 2022 },
+    { title: "Stefania",                     artist: "Kalush Orchestra",                country: "Ukraine",                year: 2022, emoji: "👩‍👦💐" },
+    { title: "Space Man",                    artist: "Sam Ryder",                       country: "United Kingdom",         year: 2022, emoji: "🚀👨‍🚀" },
+    { title: "SloMo",                        artist: "Chanel",                          country: "Spain",                  year: 2022, emoji: "🐌🎥" },
+    { title: "Hold Me Closer",               artist: "Cornelia Jakobs",                 country: "Sweden",                 year: 2022, emoji: "🤗🧲" },
+    { title: "In corpore sano",              artist: "Konstrakta",                      country: "Serbia",                 year: 2022, emoji: "💪🧠🏥" },
+    { title: "Brividi",                      artist: "Mahmood & Blanco",                country: "Italy",                  year: 2022, emoji: "🥶" },
+    { title: "Trenulețul",                   artist: "Zdob și Zdub & Frații Advahov",   country: "Moldova",                year: 2022, emoji: "🚂" },
+    { title: "Give That Wolf a Banana",      artist: "Subwoolfer",                      country: "Norway",                 year: 2022, emoji: "🐺🍌" },
+    { title: "De diepte",                    artist: "S10",                             country: "Netherlands",            year: 2022, emoji: "🌊⬇️" },
+    { title: "River",                        artist: "Ochman",                          country: "Poland",                 year: 2022, emoji: "🏞️🌊" },
     // 2023
-    { title: "Tattoo",                       artist: "Loreen",                          country: "Sweden",                 year: 2023 },
-    { title: "Cha Cha Cha",                  artist: "Käärijä",                         country: "Finland",                year: 2023 },
-    { title: "Unicorn",                      artist: "Noa Kirel",                       country: "Israel",                 year: 2023 },
-    { title: "Due vite",                     artist: "Marco Mengoni",                   country: "Italy",                  year: 2023 },
-    { title: "Queen of Kings",               artist: "Alessandra",                      country: "Norway",                 year: 2023 },
-    { title: "Heart of Steel",               artist: "Tvorchi",                         country: "Ukraine",                year: 2023 },
-    { title: "Mama ŠČ!",                     artist: "Let 3",                           country: "Croatia",                year: 2023 },
-    { title: "Eaea",                         artist: "Blanca Paloma",                   country: "Spain",                  year: 2023 },
-    { title: "My Sister's Crown",            artist: "Vesna",                           country: "Czech Republic",         year: 2023 },
-    { title: "Who the Hell Is Edgar?",       artist: "Teya & Salena",                   country: "Austria",                year: 2023 },
+    { title: "Tattoo",                       artist: "Loreen",                          country: "Sweden",                 year: 2023, emoji: "💉🖊️" },
+    { title: "Cha Cha Cha",                  artist: "Käärijä",                         country: "Finland",                year: 2023, emoji: "💃🕺💚" },
+    { title: "Unicorn",                      artist: "Noa Kirel",                       country: "Israel",                 year: 2023, emoji: "🦄" },
+    { title: "Due vite",                     artist: "Marco Mengoni",                   country: "Italy",                  year: 2023, emoji: "✌️👤👤" },
+    { title: "Queen of Kings",               artist: "Alessandra",                      country: "Norway",                 year: 2023, emoji: "👸👑🤴" },
+    { title: "Heart of Steel",               artist: "Tvorchi",                         country: "Ukraine",                year: 2023, emoji: "❤️⚙️" },
+    { title: "Mama ŠČ!",                     artist: "Let 3",                           country: "Croatia",                year: 2023, emoji: "👩🗯️❗" },
+    { title: "Eaea",                         artist: "Blanca Paloma",                   country: "Spain",                  year: 2023, emoji: "🤱🎶" },
+    { title: "My Sister's Crown",            artist: "Vesna",                           country: "Czech Republic",         year: 2023, emoji: "👭👑" },
+    { title: "Who the Hell Is Edgar?",       artist: "Teya & Salena",                   country: "Austria",                year: 2023, emoji: "👻✍️❓" },
     // 2024
-    { title: "The Code",                     artist: "Nemo",                            country: "Switzerland",            year: 2024 },
-    { title: "Rim Tim Tagi Dim",             artist: "Baby Lasagna",                    country: "Croatia",                year: 2024 },
-    { title: "Teresa & Maria",               artist: "alyona alyona & Jerry Heil",      country: "Ukraine",                year: 2024 },
-    { title: "Mon amour",                    artist: "Slimane",                         country: "France",                 year: 2024 },
-    { title: "Hurricane",                    artist: "Eden Golan",                      country: "Israel",                 year: 2024 },
-    { title: "Doomsday Blue",                artist: "Bambie Thug",                     country: "Ireland",                year: 2024 },
-    { title: "La noia",                      artist: "Angelina Mango",                  country: "Italy",                  year: 2024 },
-    { title: "Jako",                         artist: "Ladaniva",                        country: "Armenia",                year: 2024 },
-    { title: "Unforgettable",                artist: "Marcus & Martinus",               country: "Sweden",                 year: 2024 },
-    { title: "Zari",                         artist: "Marina Satti",                    country: "Greece",                 year: 2024 },
+    { title: "The Code",                     artist: "Nemo",                            country: "Switzerland",            year: 2024, emoji: "🧩🔓" },
+    { title: "Rim Tim Tagi Dim",             artist: "Baby Lasagna",                    country: "Croatia",                year: 2024, emoji: "🐈🎸" },
+    { title: "Teresa & Maria",               artist: "alyona alyona & Jerry Heil",      country: "Ukraine",                year: 2024, emoji: "👩➕👩🙏" },
+    { title: "Mon amour",                    artist: "Slimane",                         country: "France",                 year: 2024, emoji: "💕" },
+    { title: "Hurricane",                    artist: "Eden Golan",                      country: "Israel",                 year: 2024, emoji: "🌀" },
+    { title: "Doomsday Blue",                artist: "Bambie Thug",                     country: "Ireland",                year: 2024, emoji: "☠️📅🔵" },
+    { title: "La noia",                      artist: "Angelina Mango",                  country: "Italy",                  year: 2024, emoji: "🥱" },
+    { title: "Jako",                         artist: "Ladaniva",                        country: "Armenia",                year: 2024, emoji: "👧🌸" },
+    { title: "Unforgettable",                artist: "Marcus & Martinus",               country: "Sweden",                 year: 2024, emoji: "🧠📌" },
+    { title: "Zari",                         artist: "Marina Satti",                    country: "Greece",                 year: 2024, emoji: "🎲" },
     // 2025
-    { title: "Wasted Love",                  artist: "JJ",                              country: "Austria",                year: 2025 },
-    { title: "New Day Will Rise",            artist: "Yuval Raphael",                   country: "Israel",                 year: 2025 },
-    { title: "Espresso Macchiato",           artist: "Tommy Cash",                      country: "Estonia",                year: 2025 },
-    { title: "Bara bada bastu",              artist: "KAJ",                             country: "Sweden",                 year: 2025 },
-    { title: "C'est la vie",                 artist: "Claude",                          country: "Netherlands",            year: 2025 },
-    { title: "Ich komme",                    artist: "Erika Vikman",                    country: "Finland",                year: 2025 },
-    { title: "Volevo essere un duro",        artist: "Lucio Corsi",                     country: "Italy",                  year: 2025 },
-    { title: "Serving",                      artist: "Miriana Conte",                   country: "Malta",                  year: 2025 },
+    { title: "Wasted Love",                  artist: "JJ",                              country: "Austria",                year: 2025, emoji: "🗑️❤️" },
+    { title: "New Day Will Rise",            artist: "Yuval Raphael",                   country: "Israel",                 year: 2025, emoji: "🆕🌅" },
+    { title: "Espresso Macchiato",           artist: "Tommy Cash",                      country: "Estonia",                year: 2025, emoji: "☕" },
+    { title: "Bara bada bastu",              artist: "KAJ",                             country: "Sweden",                 year: 2025, emoji: "🧖‍♂️🔥" },
+    { title: "C'est la vie",                 artist: "Claude",                          country: "Netherlands",            year: 2025, emoji: "🤷‍♂️🌈" },
+    { title: "Ich komme",                    artist: "Erika Vikman",                    country: "Finland",                year: 2025, emoji: "🏃‍♀️➡️" },
+    { title: "Volevo essere un duro",        artist: "Lucio Corsi",                     country: "Italy",                  year: 2025, emoji: "😢💪" },
+    { title: "Serving",                      artist: "Miriana Conte",                   country: "Malta",                  year: 2025, emoji: "💁‍♀️🍽️" },
     // 2026
-    { title: "Bangaranga",                   artist: "Dara",                            country: "Bulgaria",               year: 2026 },
-    { title: "Michelle",                     artist: "Noam Bettan",                     country: "Israel",                 year: 2026 },
-    { title: "Choke Me",                     artist: "Alexandra Căpitănescu",           country: "Romania",                year: 2026 },
-    { title: "Eclipse",                      artist: "Delta Goodrem",                   country: "Australia",              year: 2026 },
-    { title: "Per sempre sì",                artist: "Sal Da Vinci",                    country: "Italy",                  year: 2026 },
-    { title: "Liekinheitin",                 artist: "Linda Lampenius & Pete Parkkonen", country: "Finland",               year: 2026 },
-    { title: "Ridnym",                       artist: "Leléka",                          country: "Ukraine",                year: 2026 },
-    { title: "Ya Ya Ya",                     artist: "Jonas Lovv",                      country: "Norway",                 year: 2026 }
+    { title: "Bangaranga",                   artist: "Dara",                            country: "Bulgaria",               year: 2026, emoji: "💥🥁🎉" },
+    { title: "Michelle",                     artist: "Noam Bettan",                     country: "Israel",                 year: 2026, emoji: "👩💌" },
+    { title: "Choke Me",                     artist: "Alexandra Căpitănescu",           country: "Romania",                year: 2026, emoji: "✋😵" },
+    { title: "Eclipse",                      artist: "Delta Goodrem",                   country: "Australia",              year: 2026, emoji: "🌘" },
+    { title: "Per sempre sì",                artist: "Sal Da Vinci",                    country: "Italy",                  year: 2026, emoji: "♾️✅💍" },
+    { title: "Liekinheitin",                 artist: "Linda Lampenius & Pete Parkkonen", country: "Finland",               year: 2026, emoji: "🔥➡️" },
+    { title: "Ridnym",                       artist: "Leléka",                          country: "Ukraine",                year: 2026, emoji: "🏠❤️" },
+    { title: "Ya Ya Ya",                     artist: "Jonas Lovv",                      country: "Norway",                 year: 2026, emoji: "👍👍👍" }
   ];
 
   const ROUND_SECONDS = 30;
@@ -636,9 +648,11 @@
     const chips = $("hintChips");
     chips.innerHTML = "";
 
-    if (state.difficulty !== "hard") addChip(chips, "🎤 " + song.artist);
-    addChip(chips, "🌍 " + song.country);
-    addChip(chips, "📅 " + song.year);
+    // The picture puzzle is always shown
+    $("hintEmoji").textContent = song.emoji;
+
+    // Easy and Medium also get the year
+    if (state.difficulty !== "hard") addChip(chips, "📅 " + song.year);
 
     // Easy only: the title as blanks, with just its first letter showing
     $("hintBlanks").textContent = state.difficulty === "easy" ? titleAsBlanks(song.title) : "";
