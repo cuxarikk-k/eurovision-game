@@ -152,6 +152,34 @@
   .timer.danger { background: conic-gradient(var(--red) calc(var(--p) * 1%), rgba(255,255,255,0.12) 0); animation: pulse 0.6s infinite alternate; }
   @keyframes pulse { to { transform: scale(1.08); } }
 
+  /* ---------- Hints: visible to players while they guess ---------- */
+  .hints {
+    width: min(100%, 820px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .hint-chips { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
+  .hint-chip {
+    font-size: clamp(1.4rem, 3vw, 2.4rem);
+    font-weight: 800;
+    padding: 0.35em 0.9em;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.1);
+    border: 3px solid var(--cyan);
+  }
+  .hint-chip:nth-child(2) { border-color: var(--yellow); }
+  .hint-chip:nth-child(3) { border-color: var(--pink); }
+  .hint-blanks {
+    font-family: "Courier New", monospace;
+    font-size: clamp(1.6rem, 3.6vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    white-space: pre-wrap;
+    color: var(--yellow);
+  }
+
   /* The Eurovision-themed card */
   .card {
     position: relative;
@@ -185,40 +213,56 @@
   }
   .card .stars span { position: absolute; }
 
-  /* The clue text (hidden behind the sticker until reveal) */
+  /* The answer (hidden behind the stickers until reveal) */
   .clue {
     position: relative;
     z-index: 1;
     padding: 1rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
     text-shadow: 0 3px 12px rgba(0,0,0,0.45);
   }
   .clue .title   { font-size: clamp(2.2rem, 5.5vw, 4.4rem); font-weight: 900; line-height: 1.1; }
-  .clue .country { font-size: clamp(1.6rem, 3.4vw, 2.6rem); font-weight: 700; color: var(--yellow); }
-  .clue .year    { font-size: clamp(1.4rem, 3vw, 2.2rem);  font-weight: 700; color: var(--cyan); }
+  .clue .artist  { font-size: clamp(1.5rem, 3.2vw, 2.4rem); font-weight: 700; }
+  .clue .details { font-size: clamp(1.4rem, 3vw, 2.2rem);  font-weight: 700; color: var(--yellow); }
 
-  /* The sticker that covers the clue */
+  /* The stickers that cover the answer */
+  .stickers {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
   .sticker {
     position: absolute;
-    z-index: 2;
-    inset: 18% 12%;
-    border-radius: 24px;
-    background: var(--yellow);
-    color: var(--pink);
     display: grid;
     place-items: center;
-    font-size: clamp(5rem, 14vw, 10rem);
+    border: 6px solid #fff;               /* white edge, like a real die-cut sticker */
+    box-shadow: 0 8px 18px rgba(0,0,0,0.35);
     font-weight: 900;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
-    transform: rotate(-3deg);
-    transition: transform 0.8s cubic-bezier(.6,-0.3,.7,1), opacity 0.8s;
+    color: #fff;
+    transform: rotate(var(--r));
+    transition: transform 0.7s cubic-bezier(.6,-0.3,.7,1), opacity 0.7s;
+    transition-delay: var(--delay);
   }
-  .sticker.peeled {
-    transform: translate(120%, -140%) rotate(35deg);
+  .sticker.round { border-radius: 50%; aspect-ratio: 1; }
+
+  /* The big striped sticker underneath: this one does the actual hiding */
+  .sticker.base {
+    inset: 18% 12%;
+    border-radius: 28px;
+    background: repeating-linear-gradient(45deg, var(--yellow) 0 30px, #ffbe0b 30px 60px);
+  }
+
+  /* When peeled, every sticker flies off in its own direction */
+  .stickers.peeled .sticker {
+    transform: translate(var(--fx), var(--fy)) rotate(calc(var(--r) + 45deg));
     opacity: 0;
   }
+
+  /* Used to put stickers back instantly at the start of a round */
+  .stickers.instant .sticker { transition: none; }
 
   /* After-reveal panel */
   .result {
@@ -309,11 +353,11 @@
   <!-- SCREEN 1: host picks the difficulty for the next round -->
   <section class="screen active" id="screenDifficulty">
     <h1>Choose the difficulty</h1>
-    <p class="big">This decides how much of the song is shown when the sticker comes off.</p>
+    <p class="big">Players see the hints straight away and shout out the song title hidden under the stickers.</p>
     <div class="difficulty-grid">
-      <button class="btn-cyan"   data-difficulty="easy">Easy<small>Song title</small></button>
-      <button class="btn-yellow" data-difficulty="medium">Medium<small>Title + country</small></button>
-      <button class="btn-pink"   data-difficulty="hard">Hard<small>Title + country + year</small></button>
+      <button class="btn-cyan"   data-difficulty="easy">Easy<small>Artist, country, year + letter blanks</small></button>
+      <button class="btn-yellow" data-difficulty="medium">Medium<small>Artist, country, year</small></button>
+      <button class="btn-pink"   data-difficulty="hard">Hard<small>Country + year only</small></button>
     </div>
   </section>
 
@@ -322,6 +366,12 @@
     <div class="round-top">
       <div class="badge" id="difficultyBadge">Easy</div>
       <div class="timer" id="timer"><span id="timerNumber">30</span></div>
+    </div>
+
+    <!-- Hints players can see while guessing -->
+    <div class="hints">
+      <div class="hint-chips" id="hintChips"></div>
+      <div class="hint-blanks" id="hintBlanks"></div>
     </div>
 
     <div class="card">
@@ -335,7 +385,25 @@
         <span style="top:50%;right:3%">✧</span>
       </div>
       <div class="clue" id="clue"></div>
-      <div class="sticker" id="sticker">?</div>
+      <div class="stickers" id="stickers">
+        <div class="sticker base"
+             style="--r:-3deg; --fx:0%; --fy:160%; --delay:0.45s;"></div>
+        <div class="sticker round"
+             style="top:8%; left:6%; width:22%; background:var(--pink); font-size:clamp(2.5rem,6vw,4.5rem);
+                    --r:-12deg; --fx:-160%; --fy:-160%; --delay:0s;">🎤</div>
+        <div class="sticker round"
+             style="top:10%; right:9%; width:19%; background:var(--cyan); font-size:clamp(3rem,7vw,5rem);
+                    --r:10deg; --fx:170%; --fy:-160%; --delay:0.08s;">♥</div>
+        <div class="sticker"
+             style="bottom:12%; left:10%; padding:0.3em 0.9em; border-radius:999px; background:var(--purple);
+                    font-size:clamp(1.3rem,3vw,2.2rem); --r:-6deg; --fx:-150%; --fy:200%; --delay:0.16s;">Douze points!</div>
+        <div class="sticker round"
+             style="bottom:9%; right:10%; width:20%; background:var(--green); font-size:clamp(2.5rem,6vw,4.5rem);
+                    --r:14deg; --fx:170%; --fy:170%; --delay:0.24s;">🎶</div>
+        <div class="sticker round"
+             style="top:33%; left:39%; width:22%; background:var(--red); font-size:clamp(3.5rem,8vw,6rem);
+                    --r:8deg; --fx:0%; --fy:-260%; --delay:0.32s;">★</div>
+      </div>
     </div>
 
     <button class="btn-pink" id="revealButton">Reveal!</button>
@@ -375,52 +443,155 @@
 </main>
 
 <script>
-  // ---------- The song pool ----------
+  // ---------- The song pool (2000–2026; there was no contest in 2020) ----------
   const SONGS = [
+    // 2000
+    { title: "Fly on the Wings of Love",     artist: "Olsen Brothers",                  country: "Denmark",                year: 2000 },
+    { title: "Solo",                         artist: "Alsou",                           country: "Russia",                 year: 2000 },
+    { title: "My Star",                      artist: "Brainstorm",                      country: "Latvia",                 year: 2000 },
+    // 2001
+    { title: "Everybody",                    artist: "Tanel Padar, Dave Benton & 2XL",  country: "Estonia",                year: 2001 },
+    { title: "(I Would) Die for You",        artist: "Antique",                         country: "Greece",                 year: 2001 },
+    { title: "Never Ever Let You Go",        artist: "Rollo & King",                    country: "Denmark",                year: 2001 },
+    // 2002
+    { title: "I Wanna",                      artist: "Marie N",                         country: "Latvia",                 year: 2002 },
+    { title: "7th Wonder",                   artist: "Ira Losco",                       country: "Malta",                  year: 2002 },
+    // 2003
+    { title: "Everyway That I Can",          artist: "Sertab Erener",                   country: "Turkey",                 year: 2003 },
+    { title: "Sanomi",                       artist: "Urban Trad",                      country: "Belgium",                year: 2003 },
+    // 2004
+    { title: "Wild Dances",                  artist: "Ruslana",                         country: "Ukraine",                year: 2004 },
+    { title: "Lane moje",                    artist: "Željko Joksimović",               country: "Serbia and Montenegro",  year: 2004 },
+    { title: "Shake It",                     artist: "Sakis Rouvas",                    country: "Greece",                 year: 2004 },
+    // 2005
+    { title: "My Number One",                artist: "Helena Paparizou",                country: "Greece",                 year: 2005 },
+    { title: "Angel",                        artist: "Chiara",                          country: "Malta",                  year: 2005 },
+    { title: "Boonika bate doba",            artist: "Zdob și Zdub",                    country: "Moldova",                year: 2005 },
+    // 2006
+    { title: "Hard Rock Hallelujah",         artist: "Lordi",                           country: "Finland",                year: 2006 },
+    { title: "Never Let You Go",             artist: "Dima Bilan",                      country: "Russia",                 year: 2006 },
+    { title: "Lejla",                        artist: "Hari Mata Hari",                  country: "Bosnia and Herzegovina", year: 2006 },
+    // 2007
+    { title: "Molitva",                      artist: "Marija Šerifović",                country: "Serbia",                 year: 2007 },
+    { title: "Dancing Lasha Tumbai",         artist: "Verka Serduchka",                 country: "Ukraine",                year: 2007 },
+    { title: "Song #1",                      artist: "Serebro",                         country: "Russia",                 year: 2007 },
+    // 2008
+    { title: "Believe",                      artist: "Dima Bilan",                      country: "Russia",                 year: 2008 },
+    { title: "Shady Lady",                   artist: "Ani Lorak",                       country: "Ukraine",                year: 2008 },
+    { title: "Secret Combination",           artist: "Kalomira",                        country: "Greece",                 year: 2008 },
+    // 2009
+    { title: "Fairytale",                    artist: "Alexander Rybak",                 country: "Norway",                 year: 2009 },
+    { title: "Is It True?",                  artist: "Yohanna",                         country: "Iceland",                year: 2009 },
+    { title: "Always",                       artist: "AySel & Arash",                   country: "Azerbaijan",             year: 2009 },
+    // 2010
+    { title: "Satellite",                    artist: "Lena",                            country: "Germany",                year: 2010 },
+    { title: "We Could Be the Same",         artist: "maNga",                           country: "Turkey",                 year: 2010 },
+    { title: "Playing with Fire",            artist: "Paula Seling & Ovi",              country: "Romania",                year: 2010 },
+    // 2011
+    { title: "Running Scared",               artist: "Ell & Nikki",                     country: "Azerbaijan",             year: 2011 },
+    { title: "Madness of Love",              artist: "Raphael Gualazzi",                country: "Italy",                  year: 2011 },
+    { title: "Popular",                      artist: "Eric Saade",                      country: "Sweden",                 year: 2011 },
+    { title: "Lipstick",                     artist: "Jedward",                         country: "Ireland",                year: 2011 },
+    // 2012
+    { title: "Euphoria",                     artist: "Loreen",                          country: "Sweden",                 year: 2012 },
+    { title: "Party for Everybody",          artist: "Buranovskiye Babushki",           country: "Russia",                 year: 2012 },
+    { title: "Nije ljubav stvar",            artist: "Željko Joksimović",               country: "Serbia",                 year: 2012 },
+    // 2013
+    { title: "Only Teardrops",               artist: "Emmelie de Forest",               country: "Denmark",                year: 2013 },
+    { title: "Hold Me",                      artist: "Farid Mammadov",                  country: "Azerbaijan",             year: 2013 },
+    { title: "Gravity",                      artist: "Zlata Ognevich",                  country: "Ukraine",                year: 2013 },
+    { title: "It's My Life",                 artist: "Cezar",                           country: "Romania",                year: 2013 },
+    // 2014
+    { title: "Rise Like a Phoenix",          artist: "Conchita Wurst",                  country: "Austria",                year: 2014 },
+    { title: "Calm After the Storm",         artist: "The Common Linnets",              country: "Netherlands",            year: 2014 },
+    { title: "Undo",                         artist: "Sanna Nielsen",                   country: "Sweden",                 year: 2014 },
+    // 2015
+    { title: "Heroes",                       artist: "Måns Zelmerlöw",                  country: "Sweden",                 year: 2015 },
+    { title: "A Million Voices",             artist: "Polina Gagarina",                 country: "Russia",                 year: 2015 },
+    { title: "Grande amore",                 artist: "Il Volo",                         country: "Italy",                  year: 2015 },
+    { title: "Rhythm Inside",                artist: "Loïc Nottet",                     country: "Belgium",                year: 2015 },
+    // 2016
+    { title: "1944",                         artist: "Jamala",                          country: "Ukraine",                year: 2016 },
+    { title: "Sound of Silence",             artist: "Dami Im",                         country: "Australia",              year: 2016 },
+    { title: "You Are the Only One",         artist: "Sergey Lazarev",                  country: "Russia",                 year: 2016 },
+    { title: "If Love Was a Crime",          artist: "Poli Genova",                     country: "Bulgaria",               year: 2016 },
+    // 2017
+    { title: "Amar pelos dois",              artist: "Salvador Sobral",                 country: "Portugal",               year: 2017 },
+    { title: "Beautiful Mess",               artist: "Kristian Kostov",                 country: "Bulgaria",               year: 2017 },
+    { title: "Hey Mamma",                    artist: "SunStroke Project",               country: "Moldova",                year: 2017 },
+    { title: "Occidentali's Karma",          artist: "Francesco Gabbani",               country: "Italy",                  year: 2017 },
+    // 2018
+    { title: "Toy",                          artist: "Netta",                           country: "Israel",                 year: 2018 },
+    { title: "Fuego",                        artist: "Eleni Foureira",                  country: "Cyprus",                 year: 2018 },
+    { title: "Nobody but You",               artist: "Cesár Sampson",                   country: "Austria",                year: 2018 },
+    { title: "You Let Me Walk Alone",        artist: "Michael Schulte",                 country: "Germany",                year: 2018 },
+    // 2019
+    { title: "Arcade",                       artist: "Duncan Laurence",                 country: "Netherlands",            year: 2019 },
+    { title: "Soldi",                        artist: "Mahmood",                         country: "Italy",                  year: 2019 },
+    { title: "Scream",                       artist: "Sergey Lazarev",                  country: "Russia",                 year: 2019 },
+    { title: "She Got Me",                   artist: "Luca Hänni",                      country: "Switzerland",            year: 2019 },
     // 2021
-    { title: "Zitti e buoni",              country: "Italy",          year: 2021 },
-    { title: "Voilà",                      country: "France",         year: 2021 },
-    { title: "Tout l'univers",             country: "Switzerland",    year: 2021 },
-    { title: "10 Years",                   country: "Iceland",        year: 2021 },
-    { title: "Shum",                       country: "Ukraine",        year: 2021 },
-    { title: "Dark Side",                  country: "Finland",        year: 2021 },
-    { title: "Je me casse",                country: "Malta",          year: 2021 },
-    { title: "Discoteque",                 country: "Lithuania",      year: 2021 },
-    { title: "El Diablo",                  country: "Cyprus",         year: 2021 },
-    { title: "Fallen Angel",               country: "Norway",         year: 2021 },
+    { title: "Zitti e buoni",                artist: "Måneskin",                        country: "Italy",                  year: 2021 },
+    { title: "Voilà",                        artist: "Barbara Pravi",                   country: "France",                 year: 2021 },
+    { title: "Tout l'univers",               artist: "Gjon's Tears",                    country: "Switzerland",            year: 2021 },
+    { title: "10 Years",                     artist: "Daði og Gagnamagnið",             country: "Iceland",                year: 2021 },
+    { title: "Shum",                         artist: "Go_A",                            country: "Ukraine",                year: 2021 },
+    { title: "Dark Side",                    artist: "Blind Channel",                   country: "Finland",                year: 2021 },
+    { title: "Je me casse",                  artist: "Destiny",                         country: "Malta",                  year: 2021 },
+    { title: "Discoteque",                   artist: "The Roop",                        country: "Lithuania",              year: 2021 },
+    { title: "El Diablo",                    artist: "Elena Tsagrinou",                 country: "Cyprus",                 year: 2021 },
+    { title: "Fallen Angel",                 artist: "Tix",                             country: "Norway",                 year: 2021 },
     // 2022
-    { title: "Stefania",                   country: "Ukraine",        year: 2022 },
-    { title: "Space Man",                  country: "United Kingdom", year: 2022 },
-    { title: "SloMo",                      country: "Spain",          year: 2022 },
-    { title: "Hold Me Closer",             country: "Sweden",         year: 2022 },
-    { title: "In corpore sano",            country: "Serbia",         year: 2022 },
-    { title: "Brividi",                    country: "Italy",          year: 2022 },
-    { title: "Trenulețul",                 country: "Moldova",        year: 2022 },
-    { title: "Give That Wolf a Banana",    country: "Norway",         year: 2022 },
-    { title: "De diepte",                  country: "Netherlands",    year: 2022 },
-    { title: "River",                      country: "Poland",         year: 2022 },
+    { title: "Stefania",                     artist: "Kalush Orchestra",                country: "Ukraine",                year: 2022 },
+    { title: "Space Man",                    artist: "Sam Ryder",                       country: "United Kingdom",         year: 2022 },
+    { title: "SloMo",                        artist: "Chanel",                          country: "Spain",                  year: 2022 },
+    { title: "Hold Me Closer",               artist: "Cornelia Jakobs",                 country: "Sweden",                 year: 2022 },
+    { title: "In corpore sano",              artist: "Konstrakta",                      country: "Serbia",                 year: 2022 },
+    { title: "Brividi",                      artist: "Mahmood & Blanco",                country: "Italy",                  year: 2022 },
+    { title: "Trenulețul",                   artist: "Zdob și Zdub & Frații Advahov",   country: "Moldova",                year: 2022 },
+    { title: "Give That Wolf a Banana",      artist: "Subwoolfer",                      country: "Norway",                 year: 2022 },
+    { title: "De diepte",                    artist: "S10",                             country: "Netherlands",            year: 2022 },
+    { title: "River",                        artist: "Ochman",                          country: "Poland",                 year: 2022 },
     // 2023
-    { title: "Tattoo",                     country: "Sweden",         year: 2023 },
-    { title: "Cha Cha Cha",                country: "Finland",        year: 2023 },
-    { title: "Unicorn",                    country: "Israel",         year: 2023 },
-    { title: "Due vite",                   country: "Italy",          year: 2023 },
-    { title: "Queen of Kings",             country: "Norway",         year: 2023 },
-    { title: "Heart of Steel",             country: "Ukraine",        year: 2023 },
-    { title: "Mama ŠČ!",                   country: "Croatia",        year: 2023 },
-    { title: "Eaea",                       country: "Spain",          year: 2023 },
-    { title: "My Sister's Crown",          country: "Czech Republic", year: 2023 },
-    { title: "Who the Hell Is Edgar?",     country: "Austria",        year: 2023 },
+    { title: "Tattoo",                       artist: "Loreen",                          country: "Sweden",                 year: 2023 },
+    { title: "Cha Cha Cha",                  artist: "Käärijä",                         country: "Finland",                year: 2023 },
+    { title: "Unicorn",                      artist: "Noa Kirel",                       country: "Israel",                 year: 2023 },
+    { title: "Due vite",                     artist: "Marco Mengoni",                   country: "Italy",                  year: 2023 },
+    { title: "Queen of Kings",               artist: "Alessandra",                      country: "Norway",                 year: 2023 },
+    { title: "Heart of Steel",               artist: "Tvorchi",                         country: "Ukraine",                year: 2023 },
+    { title: "Mama ŠČ!",                     artist: "Let 3",                           country: "Croatia",                year: 2023 },
+    { title: "Eaea",                         artist: "Blanca Paloma",                   country: "Spain",                  year: 2023 },
+    { title: "My Sister's Crown",            artist: "Vesna",                           country: "Czech Republic",         year: 2023 },
+    { title: "Who the Hell Is Edgar?",       artist: "Teya & Salena",                   country: "Austria",                year: 2023 },
     // 2024
-    { title: "The Code",                   country: "Switzerland",    year: 2024 },
-    { title: "Rim Tim Tagi Dim",           country: "Croatia",        year: 2024 },
-    { title: "Teresa & Maria",             country: "Ukraine",        year: 2024 },
-    { title: "Mon amour",                  country: "France",         year: 2024 },
-    { title: "Hurricane",                  country: "Israel",         year: 2024 },
-    { title: "Doomsday Blue",              country: "Ireland",        year: 2024 },
-    { title: "La noia",                    country: "Italy",          year: 2024 },
-    { title: "Jako",                       country: "Armenia",        year: 2024 },
-    { title: "Unforgettable",              country: "Sweden",         year: 2024 },
-    { title: "Zari",                       country: "Greece",         year: 2024 }
+    { title: "The Code",                     artist: "Nemo",                            country: "Switzerland",            year: 2024 },
+    { title: "Rim Tim Tagi Dim",             artist: "Baby Lasagna",                    country: "Croatia",                year: 2024 },
+    { title: "Teresa & Maria",               artist: "alyona alyona & Jerry Heil",      country: "Ukraine",                year: 2024 },
+    { title: "Mon amour",                    artist: "Slimane",                         country: "France",                 year: 2024 },
+    { title: "Hurricane",                    artist: "Eden Golan",                      country: "Israel",                 year: 2024 },
+    { title: "Doomsday Blue",                artist: "Bambie Thug",                     country: "Ireland",                year: 2024 },
+    { title: "La noia",                      artist: "Angelina Mango",                  country: "Italy",                  year: 2024 },
+    { title: "Jako",                         artist: "Ladaniva",                        country: "Armenia",                year: 2024 },
+    { title: "Unforgettable",                artist: "Marcus & Martinus",               country: "Sweden",                 year: 2024 },
+    { title: "Zari",                         artist: "Marina Satti",                    country: "Greece",                 year: 2024 },
+    // 2025
+    { title: "Wasted Love",                  artist: "JJ",                              country: "Austria",                year: 2025 },
+    { title: "New Day Will Rise",            artist: "Yuval Raphael",                   country: "Israel",                 year: 2025 },
+    { title: "Espresso Macchiato",           artist: "Tommy Cash",                      country: "Estonia",                year: 2025 },
+    { title: "Bara bada bastu",              artist: "KAJ",                             country: "Sweden",                 year: 2025 },
+    { title: "C'est la vie",                 artist: "Claude",                          country: "Netherlands",            year: 2025 },
+    { title: "Ich komme",                    artist: "Erika Vikman",                    country: "Finland",                year: 2025 },
+    { title: "Volevo essere un duro",        artist: "Lucio Corsi",                     country: "Italy",                  year: 2025 },
+    { title: "Serving",                      artist: "Miriana Conte",                   country: "Malta",                  year: 2025 },
+    // 2026
+    { title: "Bangaranga",                   artist: "Dara",                            country: "Bulgaria",               year: 2026 },
+    { title: "Michelle",                     artist: "Noam Bettan",                     country: "Israel",                 year: 2026 },
+    { title: "Choke Me",                     artist: "Alexandra Căpitănescu",           country: "Romania",                year: 2026 },
+    { title: "Eclipse",                      artist: "Delta Goodrem",                   country: "Australia",              year: 2026 },
+    { title: "Per sempre sì",                artist: "Sal Da Vinci",                    country: "Italy",                  year: 2026 },
+    { title: "Liekinheitin",                 artist: "Linda Lampenius & Pete Parkkonen", country: "Finland",               year: 2026 },
+    { title: "Ridnym",                       artist: "Leléka",                          country: "Ukraine",                year: 2026 },
+    { title: "Ya Ya Ya",                     artist: "Jonas Lovv",                      country: "Norway",                 year: 2026 }
   ];
 
   const ROUND_SECONDS = 30;
@@ -467,6 +638,36 @@
     $("roundLabel").textContent = state.round > 0 ? "Round " + state.round : "";
   }
 
+  // ---------- Hints shown while players guess ----------
+  function showHints() {
+    const song = state.song;
+    const chips = $("hintChips");
+    chips.innerHTML = "";
+
+    if (state.difficulty !== "hard") addChip(chips, "🎤 " + song.artist);
+    addChip(chips, "🌍 " + song.country);
+    addChip(chips, "📅 " + song.year);
+
+    // Easy only: the title as blanks, with just its first letter showing
+    $("hintBlanks").textContent = state.difficulty === "easy" ? titleAsBlanks(song.title) : "";
+  }
+
+  function addChip(parent, text) {
+    const chip = document.createElement("div");
+    chip.className = "hint-chip";
+    chip.textContent = text;
+    parent.appendChild(chip);
+  }
+
+  // "Euphoria" becomes "E_______"; spaces and punctuation stay so players see the word shapes
+  function titleAsBlanks(title) {
+    let firstShown = false;
+    return title.replace(/[\p{L}\p{N}]/gu, (ch) => {
+      if (!firstShown) { firstShown = true; return ch; }
+      return "_";
+    }).replace(/ /g, "   ");
+  }
+
   // ---------- Starting a round ----------
   function startRound(difficulty) {
     state.difficulty = difficulty;
@@ -477,8 +678,16 @@
     updateRoundLabel();
 
     $("difficultyBadge").textContent = DIFFICULTY_LABELS[difficulty];
-    $("clue").innerHTML = "";                 // nothing behind the sticker yet
-    $("sticker").classList.remove("peeled");  // put the sticker back on
+    $("clue").innerHTML = "";                 // nothing behind the stickers yet
+    showHints();
+
+    // Put all stickers back on instantly (no fly-in animation)
+    const stickers = $("stickers");
+    stickers.classList.add("instant");
+    stickers.classList.remove("peeled");
+    void stickers.offsetWidth;                // makes the browser apply the change right now
+    stickers.classList.remove("instant");
+
     $("revealButton").style.display = "";
     $("result").classList.remove("show");
     $("playerName").value = "";
@@ -516,8 +725,8 @@
     state.pointsOnOffer = timedOut ? 0 : state.secondsLeft;
     if (timedOut) drawTimer(0);
 
-    showClue();
-    $("sticker").classList.add("peeled");
+    showAnswer();
+    $("stickers").classList.add("peeled");
     $("revealButton").style.display = "none";
 
     if (state.pointsOnOffer > 0) {
@@ -534,16 +743,13 @@
     $("result").classList.add("show");
   }
 
-  function showClue() {
+  // The full answer that appears when the stickers come off
+  function showAnswer() {
     const clue = $("clue");
     clue.innerHTML = "";
     addClueLine(clue, "title", state.song.title);
-    if (state.difficulty === "medium" || state.difficulty === "hard") {
-      addClueLine(clue, "country", state.song.country);
-    }
-    if (state.difficulty === "hard") {
-      addClueLine(clue, "year", state.song.year);
-    }
+    addClueLine(clue, "artist", state.song.artist);
+    addClueLine(clue, "details", state.song.country + " · " + state.song.year);
   }
 
   function addClueLine(parent, className, text) {
